@@ -54,7 +54,7 @@ body {
     position: relative;
     padding-top: 100px;
     padding-bottom: 50px;
-    background: url('sources/pothole.jpeg'); /* Make sure this image exists! */
+    background: url('sources/pothole.webp'); /* Make sure this image exists! */
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
