@@ -46,4 +46,59 @@ document.addEventListener('DOMContentLoaded', () => {
     }, { threshold: 0.1 });
     
     document.querySelectorAll('.pre-reveal').forEach((el) => observer.observe(el));
+
+    // --- User Geolocation: request permission and show user location on the map ---
+    const locateBtn = document.getElementById('locate-btn');
+    let userMarker = null;
+
+    function onLocationSuccess(position) {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        if (userMarker) map.removeLayer(userMarker);
+
+        userMarker = L.marker([lat, lng]).addTo(map);
+        map.setView([lat, lng], 15);
+    }
+
+    function onLocationError(err) {
+        console.warn('Geolocation error:', err);
+        alert('Unable to retrieve location: ' + (err.message || 'permission denied'));
+        if (locateBtn) {
+            locateBtn.disabled = false;
+            locateBtn.textContent = '📍 Locate me';
+        }
+    }
+
+    function locateUser() {
+        if (!navigator.geolocation) {
+            alert('Geolocation is not supported by your browser.');
+            return;
+        }
+        if (locateBtn) {
+            locateBtn.disabled = true;
+            locateBtn.textContent = 'Locating...';
+        }
+        navigator.geolocation.getCurrentPosition((pos) => {
+            onLocationSuccess(pos);
+            if (locateBtn) {
+                locateBtn.disabled = false;
+                locateBtn.textContent = '📍 Locate me';
+            }
+        }, onLocationError, { enableHighAccuracy: true, timeout: 10000 });
+    }
+
+    if (locateBtn) {
+        locateBtn.addEventListener('click', locateUser);
+        // Ask once (confirm) whether user wants to share their location on load
+        setTimeout(() => {
+            try {
+                if (confirm('Allow RoadIntel to access your location to show it on the map?')) {
+                    locateUser();
+                }
+            } catch (e) {
+                // some browsers may block repeated prompts; ignore
+            }
+        }, 900);
+    }
 });
