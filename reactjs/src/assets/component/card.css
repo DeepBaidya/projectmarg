@@ -1,0 +1,11 @@
+.ele{
+    width:  200px;
+    height: 250px;
+    background-color: aliceblue;
+    color: rgb(0, 0, 0);
+}
+.sub-ele{
+   display: flex;
+   flex-direction: column;
+   justify-content: end;
+}
