@@ -43,7 +43,7 @@ const Hero = () => {
     Bhopal: { latitude: 23.2599, longitude: 77.4126 },
     Chennai: { latitude: 13.0827, longitude: 80.2707 },
     Hyderabad: { latitude: 17.3850, longitude: 78.4867 },
-    Kalyani: { latitude: 22.9750, longitude: 88.4343 }
+    Kalyani: { latitude: 22.9788076905363, longitude: 88.43337988276289 }
   };
 
   const onFileSelected = (e, mediaType) => {
@@ -114,15 +114,12 @@ const Hero = () => {
     form.append('mediaType', pendingMediaType);
     form.append('city', cityName || '');
     if (coords && coords.latitude != null) {
-      form.append('latitude', String(coords.latitude));
-      form.append('longitude', String(coords.longitude));
+      form.append('centerLocation', `${coords.longitude},${coords.latitude}`);
       if (coords.accuracy != null) form.append('accuracy', String(coords.accuracy));
     } else if (cityName && cities[cityName]) {
-      form.append('latitude', String(cities[cityName].latitude));
-      form.append('longitude', String(cities[cityName].longitude));
+      form.append('centerLocation', `${cities[cityName].longitude},${cities[cityName].latitude}`);
     } else {
-      form.append('latitude', '');
-      form.append('longitude', '');
+      form.append('centerLocation', '');
     }
 
     xhr.send(form);
