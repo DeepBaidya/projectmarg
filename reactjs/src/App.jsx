@@ -22,30 +22,184 @@ const Navbar = () => {
   );
 };
 
-const Hero = () => (
-  <section id="home" className="hero-bg">
-    <div className="hero-overlay"></div>
-    <div className="hero-bulge pre-reveal">
-      <h1>Mapping the Future of <br /><span>Road Safety</span></h1>
-      <p>AI-powered road intelligence transforming daily vehicle movement into actionable city infrastructure insights.</p>
-      <a href="#map-section"><button className="btn-main">View Live Map</button></a>
-      <div className="upload-section">
-        <p className="upload-label">Contribute Road Data</p>
-        <form className="upload-form">
-          <label className="btn-upload btn-image">
-            <input type="file" name="roadImage" accept="image/*" />
-            <span>📷 Upload Photo</span>
-          </label>
-          <label className="btn-upload btn-video">
-            <input type="file" name="roadVideo" accept="video/*" />
-            <span>🎥 Upload Video</span>
-          </label>
-        </form>
-        <p className="small-text">*Media is analyzed by AI upon selection</p>
+const Hero = () => {
+  const [status, setStatus] = useState('');
+  const [progress, setProgress] = useState(0);
+
+  const uploadUrl = import.meta.env.VITE_API_UPLOAD_URL || 'http://localhost:3000/api/v1/map/setcondition';
+
+  // Modal & pending upload state
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [pendingFile, setPendingFile] = useState(null);
+  const [pendingMediaType, setPendingMediaType] = useState(null);
+  const [selectedCity, setSelectedCity] = useState('');
+  const [currentCoords, setCurrentCoords] = useState(null);
+  const [locationStatus, setLocationStatus] = useState('');
+
+  const cities = {
+    Kolkata: { latitude: 22.5726, longitude: 88.3639 },
+    Delhi: { latitude: 28.7041, longitude: 77.1025 },
+    Mumbai: { latitude: 19.0760, longitude: 72.8777 },
+    Bhopal: { latitude: 23.2599, longitude: 77.4126 },
+    Chennai: { latitude: 13.0827, longitude: 80.2707 },
+    Hyderabad: { latitude: 17.3850, longitude: 78.4867 },
+    Kalyani: { latitude: 22.9750, longitude: 88.4343 }
+  };
+
+  const onFileSelected = (e, mediaType) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    setPendingFile(file);
+    setPendingMediaType(mediaType);
+    setSelectedCity('');
+    setCurrentCoords(null);
+    setLocationStatus('');
+    setShowLocationModal(true);
+  };
+
+  const requestCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationStatus('Geolocation not supported');
+      return;
+    }
+    setLocationStatus('Requesting location...');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        setCurrentCoords({ latitude, longitude, accuracy });
+        setSelectedCity('');
+        setLocationStatus('Location captured');
+      },
+      (err) => {
+        if (err && err.code === 1) setLocationStatus('Permission denied');
+        else setLocationStatus('Unable to get location');
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+
+  const uploadWithCoords = (cityName, coords) => {
+    if (!pendingFile) return;
+    setStatus('Preparing upload...');
+    setProgress(0);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', uploadUrl);
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) setProgress(Math.round((event.loaded / event.total) * 100));
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const json = JSON.parse(xhr.responseText || '{}');
+          setStatus(json.message || 'Upload successful');
+        } catch (err) {
+          setStatus('Upload successful');
+        }
+      } else {
+        setStatus(`Upload failed (${xhr.status})`);
+      }
+      setTimeout(() => setProgress(0), 1500);
+    };
+
+    xhr.onerror = () => {
+      setStatus('Upload failed (network)');
+      setProgress(0);
+    };
+
+    const form = new FormData();
+    form.append('file', pendingFile);
+    form.append('mediaType', pendingMediaType);
+    form.append('city', cityName || '');
+    if (coords && coords.latitude != null) {
+      form.append('latitude', String(coords.latitude));
+      form.append('longitude', String(coords.longitude));
+      if (coords.accuracy != null) form.append('accuracy', String(coords.accuracy));
+    } else if (cityName && cities[cityName]) {
+      form.append('latitude', String(cities[cityName].latitude));
+      form.append('longitude', String(cities[cityName].longitude));
+    } else {
+      form.append('latitude', '');
+      form.append('longitude', '');
+    }
+
+    xhr.send(form);
+    setStatus('Uploading...');
+    setShowLocationModal(false);
+    setPendingFile(null);
+    setPendingMediaType(null);
+  };
+
+  return (
+    <>
+      <section id="home" className="hero-bg">
+      <div className="hero-overlay"></div>
+      <div className="hero-bulge pre-reveal">
+        <h1>Mapping the Future of <br /><span>Road Safety</span></h1>
+        <p>AI-powered road intelligence transforming daily vehicle movement into actionable city infrastructure insights.</p>
+        <a href="#map-section"><button className="btn-main">View Live Map</button></a>
+        <div className="upload-section">
+          <p className="upload-label">Contribute Road Data</p>
+          <form className="upload-form" onSubmit={(ev) => ev.preventDefault()}>
+            <label className="btn-upload btn-image">
+              <input type="file" name="roadImage" accept="image/*" onChange={(e) => onFileSelected(e, 'image')} />
+              <span>📷 Upload Photo</span>
+            </label>
+            <label className="btn-upload btn-video">
+              <input type="file" name="roadVideo" accept="video/*" onChange={(e) => onFileSelected(e, 'video')} />
+              <span>🎥 Upload Video</span>
+            </label>
+          </form>
+          <div className="upload-status">
+            {status && <p className="small-text">{status}</p>}
+            {progress > 0 && (
+              <div className="progress-bar" style={{ width: '100%', background: '#eee', height: 8, borderRadius: 4 }}>
+                <div style={{ width: `${progress}%`, height: '100%', background: '#00e676', borderRadius: 4 }} />
+              </div>
+            )}
+          </div>
+          <p className="small-text">*Media is analyzed by AI upon successful upload</p>
+        </div>
       </div>
-    </div>
-  </section>
-);
+    </section>
+    {showLocationModal && (
+      <div className="modal-overlay">
+        <div className="modal">
+          <h3>Select Location</h3>
+          <p>Choose a city from the list or use your current location. The chosen coordinates will be sent with the upload.</p>
+          <div className="location-list">
+            {Object.keys(cities).map((city) => (
+              <div key={city}
+                   className={`location-item ${selectedCity === city ? 'selected' : ''}`}
+                   onClick={() => { setSelectedCity(city); setCurrentCoords(null); setLocationStatus(''); }}>
+                {city}
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+            <button type="button" className="btn-ghost" onClick={requestCurrentLocation}>Use my current location</button>
+            <button type="button" className="btn-ghost" onClick={() => { setSelectedCity(''); setCurrentCoords(null); setLocationStatus(''); }}>Clear</button>
+          </div>
+          {locationStatus && <div className="location-note">{locationStatus}</div>}
+          {currentCoords && (
+            <div className="location-note">Detected: {currentCoords.latitude.toFixed(5)}, {currentCoords.longitude.toFixed(5)} (acc {currentCoords.accuracy || 'n/a'})</div>
+          )}
+
+          <div className="modal-actions">
+            <button className="btn-ghost" onClick={() => { setShowLocationModal(false); setPendingFile(null); setPendingMediaType(null); setLocationStatus(''); }}>Cancel</button>
+            <button className="btn-primary" onClick={() => uploadWithCoords(selectedCity, currentCoords)}>
+              Confirm & Upload
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
+  );
+};
 
 const Features = () => {
   const features = [
